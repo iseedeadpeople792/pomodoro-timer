@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Помодоро-таймер</title>
+<style>
+  :root{--bg:#fff;--fg:#1a1d21;--card:#f3f5f8;--accent:#e5484d}
+  @media(prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e8eaed;--card:#1d2226}}
+  body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--fg);font:16px system-ui,sans-serif}
+  main{text-align:center;padding:16px}
+  #time{font-size:5rem;font-weight:700;font-variant-numeric:tabular-nums}
+  #phase{color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+  button{background:var(--accent);color:#fff;border:0;border-radius:12px;padding:12px 24px;font:600 1rem system-ui;cursor:pointer;margin:6px}
+  button.alt{background:var(--card);color:var(--fg)}
+  #stat{margin-top:16px;color:#7b8794}
+</style>
+</head>
+<body>
+<main>
+  <div id="phase">Работа</div>
+  <div id="time">25:00</div>
+  <button id="toggle">Старт</button><button id="reset" class="alt">Сброс</button>
+  <div id="stat"></div>
+</main>
+<script type="module">
+import { format, nextPhase, WORK } from "./timer.js";
+
+const $ = (id) => document.getElementById(id);
+const names = { work: "Работа", break: "Перерыв", long: "Длинный перерыв" };
+const today = new Date().toISOString().slice(0, 10);
+let stats = {};
+try { stats = JSON.parse(localStorage.getItem("pomodoro") || "{}"); } catch {}
+let done = stats[today] || 0;
+let phase = "work", left = WORK, timer = null;
+
+function draw() {
+  $("time").textContent = format(left);
+  $("phase").textContent = names[phase];
+  $("toggle").textContent = timer ? "Пауза" : "Старт";
+  $("stat").textContent = `Сегодня помидоров: ${done}`;
+  document.title = `${format(left)} · ${names[phase]}`;
+}
+function tick() {
+  if (--left > 0) return draw();
+  if (phase === "work") {
+    done++;
+    try { localStorage.setItem("pomodoro", JSON.stringify({ ...stats, [today]: done })); } catch {}
+  }
+  ({ phase, seconds: left } = nextPhase(phase, done));
+  draw();
+}
+$("toggle").onclick = () => { timer ? (clearInterval(timer), timer = null) : (timer = setInterval(tick, 1000)); draw(); };
+$("reset").onclick = () => { clearInterval(timer); timer = null; phase = "work"; left = WORK; draw(); };
+draw();
+</script>
+</body>
+</html>
